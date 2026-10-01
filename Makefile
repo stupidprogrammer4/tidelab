@@ -13,3 +13,4 @@ demo:
 	go run ./cmd/tidelab version
 	go run ./cmd/tidelab config check
 	go run ./cmd/tidelab book inspect
+	go run ./cmd/tidelab estimate --side buy --base-qty 2.5 --fee-bps 10

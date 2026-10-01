@@ -11,33 +11,47 @@ type BookSequenceLoader interface {
 	Load(path string) (domain.OfflineBookSequence, error)
 }
 
-type InspectOfflineBook struct {
+type OfflineBookService struct {
 	Loader BookSequenceLoader
 }
 
-func (service InspectOfflineBook) Run(path string) (domain.BookInspection, error) {
+type OfflineBook struct {
+	Revision   domain.Revision
+	Provenance string
+}
+
+func (service OfflineBookService) Load(path string) (OfflineBook, error) {
 	sequence, err := service.Loader.Load(path)
 	if err != nil {
-		return domain.BookInspection{}, err
+		return OfflineBook{}, err
 	}
 	clock := &sequenceClock{now: sequence.StartAt}
 	book, err := domain.NewBook(sequence.Instrument, sequence.Depth, domain.Offline, clock)
 	if err != nil {
-		return domain.BookInspection{}, err
+		return OfflineBook{}, err
 	}
 	if err := book.ApplySnapshot(sequence.SnapshotAsks, sequence.SnapshotBids, false); err != nil {
-		return domain.BookInspection{}, fmt.Errorf("apply fixture snapshot: %w", err)
+		return OfflineBook{}, fmt.Errorf("apply fixture snapshot: %w", err)
 	}
 	for index, update := range sequence.Updates {
 		clock.now = sequence.StartAt.Add(update.Offset)
 		if err := book.ApplyUpdate(update.Changes, false); err != nil {
-			return domain.BookInspection{}, fmt.Errorf("apply fixture update %d: %w", index+1, err)
+			return OfflineBook{}, fmt.Errorf("apply fixture update %d: %w", index+1, err)
 		}
 	}
 	revision := book.Current()
 	if err := revision.CheckEligible(domain.Offline); err != nil {
+		return OfflineBook{}, err
+	}
+	return OfflineBook{Revision: revision, Provenance: sequence.Provenance}, nil
+}
+
+func (service OfflineBookService) Inspect(path string) (domain.BookInspection, error) {
+	loaded, err := service.Load(path)
+	if err != nil {
 		return domain.BookInspection{}, err
 	}
+	revision := loaded.Revision
 	asks, err := views(revision.Asks())
 	if err != nil {
 		return domain.BookInspection{}, err
@@ -47,7 +61,7 @@ func (service InspectOfflineBook) Run(path string) (domain.BookInspection, error
 		return domain.BookInspection{}, err
 	}
 	result := domain.BookInspection{
-		Source: "synthetic_fixture", Provenance: sequence.Provenance,
+		Source: "synthetic_fixture", Provenance: loaded.Provenance,
 		Symbol: revision.Instrument().Symbol, State: revision.State(),
 		Revision: revision.Number(), Depth: revision.Depth(), Digest: revision.Digest(),
 		Asks: asks, Bids: bids, AskDepthFull: revision.AskDepthFull(),

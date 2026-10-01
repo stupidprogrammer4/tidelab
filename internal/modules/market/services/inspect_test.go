@@ -11,7 +11,7 @@ import (
 
 func TestInspectSyntheticFixture(t *testing.T) {
 	path := filepath.Join("..", "..", "..", "..", "testdata", "synthetic-market.json")
-	report, err := (InspectOfflineBook{Loader: infra.FileFixtureLoader{}}).Run(path)
+	report, err := (OfflineBookService{Loader: infra.FileFixtureLoader{}}).Inspect(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestInspectSyntheticFixture(t *testing.T) {
 
 func TestInspectRejectsInvalidatedFixture(t *testing.T) {
 	path := filepath.Join("..", "..", "..", "..", "testdata", "invalid-book.json")
-	_, err := (InspectOfflineBook{Loader: infra.FileFixtureLoader{}}).Run(path)
+	_, err := (OfflineBookService{Loader: infra.FileFixtureLoader{}}).Inspect(path)
 	if err == nil || !strings.Contains(err.Error(), "book is crossed or locked") {
 		t.Fatalf("invalid fixture error = %v", err)
 	}

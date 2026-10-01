@@ -22,6 +22,8 @@ type Value struct{ number *big.Rat }
 
 func fromRat(number *big.Rat) Value { return Value{number: number} }
 
+func FromInt64(number int64) Value { return fromRat(new(big.Rat).SetInt64(number)) }
+
 func (v Value) rat() *big.Rat {
 	if v.number == nil {
 		return new(big.Rat)
@@ -141,6 +143,27 @@ func (v Value) FloorToIncrement(increment Value) (Value, error) {
 	quotient := new(big.Rat).Quo(v.rat(), increment.rat())
 	units := new(big.Int).Quo(quotient.Num(), quotient.Denom())
 	return fromRat(new(big.Rat).Mul(new(big.Rat).SetInt(units), increment.rat())), nil
+}
+
+// Units returns an independent big integer count when v is aligned to increment.
+func (v Value) Units(increment Value) (*big.Int, error) {
+	if v.Sign() < 0 || increment.Sign() <= 0 {
+		return nil, errors.New("unit count requires a nonnegative value and positive increment")
+	}
+	quotient := new(big.Rat).Quo(v.rat(), increment.rat())
+	if !quotient.IsInt() {
+		return nil, errors.New("value is not aligned to increment")
+	}
+	return new(big.Int).Set(quotient.Num()), nil
+}
+
+// FromUnits copies the supplied integer before constructing an exact value.
+func FromUnits(units *big.Int, increment Value) (Value, error) {
+	if units == nil || units.Sign() < 0 || increment.Sign() <= 0 {
+		return Value{}, errors.New("units must be nonnegative and increment positive")
+	}
+	count := fromRat(new(big.Rat).SetInt(new(big.Int).Set(units)))
+	return count.Mul(increment), nil
 }
 
 func (v Value) CeilToScale(scale int) (Value, error) {

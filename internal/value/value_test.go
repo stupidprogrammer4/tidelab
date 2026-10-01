@@ -2,6 +2,7 @@ package value
 
 import (
 	"encoding/json"
+	"math/big"
 	"strings"
 	"sync"
 	"testing"
@@ -114,6 +115,25 @@ func TestArithmeticQuantizationAndHalfEven(t *testing.T) {
 	}
 	if got := mustDecimal(t, base); got != "1.235" {
 		t.Fatalf("input mutated: %s", got)
+	}
+}
+
+func TestIntegerUnitsWithNonPowerOfTenIncrement(t *testing.T) {
+	increment := mustParse(t, "0.03")
+	units, err := mustParse(t, "0.12").Units(increment)
+	if err != nil || units.Cmp(big.NewInt(4)) != 0 {
+		t.Fatalf("units = %v, %v", units, err)
+	}
+	value, err := FromUnits(units, increment)
+	if err != nil || mustDecimal(t, value) != "0.12" {
+		t.Fatalf("from units = %s, %v", mustDecimal(t, value), err)
+	}
+	units.SetInt64(100)
+	if got := mustDecimal(t, value); got != "0.12" {
+		t.Fatalf("result changed with caller-owned big.Int: %s", got)
+	}
+	if _, err := mustParse(t, "0.1").Units(increment); err == nil {
+		t.Fatal("misaligned value had integer units")
 	}
 }
 

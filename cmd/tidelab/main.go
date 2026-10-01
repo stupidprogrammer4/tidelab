@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	executionservices "github.com/stupidprogrammer4/tidelab/internal/modules/execution/services"
 	marketinfra "github.com/stupidprogrammer4/tidelab/internal/modules/market/infra"
 	marketservices "github.com/stupidprogrammer4/tidelab/internal/modules/market/services"
 	"github.com/stupidprogrammer4/tidelab/internal/modules/system/infra"
@@ -26,7 +27,7 @@ func main() {
 
 func run(args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("usage: tidelab version | config check [-file PATH] | book inspect [-fixture PATH] | serve [-config PATH]")
+		return errors.New("usage: tidelab version | config check [-file PATH] | book inspect [-fixture PATH] | estimate [options] | serve [-config PATH]")
 	}
 	service := services.InfoService{}
 	switch args[0] {
@@ -77,8 +78,30 @@ func run(args []string, out io.Writer) error {
 		if err := flags.Parse(args[2:]); err != nil || flags.NArg() != 0 {
 			return errors.New("usage: tidelab book inspect [-fixture PATH]")
 		}
-		inspector := marketservices.InspectOfflineBook{Loader: marketinfra.FileFixtureLoader{}}
-		report, err := inspector.Run(*path)
+		market := marketservices.OfflineBookService{Loader: marketinfra.FileFixtureLoader{}}
+		report, err := market.Inspect(*path)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(out).Encode(report)
+	case "estimate":
+		flags := flag.NewFlagSet("estimate", flag.ContinueOnError)
+		flags.SetOutput(io.Discard)
+		fixture := flags.String("fixture", "testdata/execution-book.json", "synthetic book fixture")
+		side := flags.String("side", "", "buy or sell")
+		baseQuantity := flags.String("base-qty", "", "base quantity decimal")
+		quoteBudget := flags.String("quote-budget", "", "fee-inclusive buy budget decimal")
+		feeBps := flags.String("fee-bps", "", "explicit fee basis points")
+		maxSlippage := flags.String("max-slippage-bps", "", "optional slippage limit")
+		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 {
+			return errors.New("usage: tidelab estimate --side buy|sell (--base-qty DECIMAL | --quote-budget DECIMAL) --fee-bps DECIMAL [--max-slippage-bps DECIMAL] [--fixture PATH]")
+		}
+		market := marketservices.OfflineBookService{Loader: marketinfra.FileFixtureLoader{}}
+		estimator := executionservices.EstimateOffline{Source: market}
+		report, err := estimator.Run(*fixture, executionservices.Input{
+			Side: *side, BaseQuantity: *baseQuantity, QuoteBudget: *quoteBudget,
+			FeeBps: *feeBps, MaxSlippageBps: *maxSlippage,
+		})
 		if err != nil {
 			return err
 		}

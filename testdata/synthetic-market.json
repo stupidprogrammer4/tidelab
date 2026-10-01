@@ -1,0 +1,13 @@
+{
+  "kind": "synthetic_fixture_metadata",
+  "provenance": "TideLab specification; generated values, not exchange data",
+  "symbol": "TEST/USD",
+  "base_currency": "TEST",
+  "quote_currency": "USD",
+  "quantity_increment": "0.0001",
+  "quote_scale": 4,
+  "minimum_quantity": "0.0001",
+  "minimum_cost": "0.0001",
+  "asks": [{"price": "100", "quantity": "1"}, {"price": "101", "quantity": "2"}],
+  "bids": [{"price": "99", "quantity": "1"}, {"price": "98", "quantity": "2"}]
+}

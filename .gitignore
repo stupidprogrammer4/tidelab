@@ -1,0 +1,9 @@
+docs/
+.tidelab/
+data/
+bin/
+dist/
+*.test
+*.out
+*.log
+.DS_Store

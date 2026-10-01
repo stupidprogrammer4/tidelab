@@ -1,17 +1,21 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 	executionservices "github.com/stupidprogrammer4/tidelab/internal/modules/execution/services"
 	marketinfra "github.com/stupidprogrammer4/tidelab/internal/modules/market/infra"
+	"github.com/stupidprogrammer4/tidelab/internal/modules/market/infra/recording"
 	marketservices "github.com/stupidprogrammer4/tidelab/internal/modules/market/services"
 	"github.com/stupidprogrammer4/tidelab/internal/modules/system/infra"
 	"github.com/stupidprogrammer4/tidelab/internal/modules/system/routers"
@@ -27,7 +31,7 @@ func main() {
 
 func run(args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("usage: tidelab version | config check [-file PATH] | book inspect [-fixture PATH] | estimate [options] | serve [-config PATH]")
+		return errors.New("usage: tidelab version | config check [-file PATH] | book inspect [-fixture PATH] | estimate [options] | record [options|verify|recover] | serve [-config PATH]")
 	}
 	service := services.InfoService{}
 	switch args[0] {
@@ -106,6 +110,48 @@ func run(args []string, out io.Writer) error {
 			return err
 		}
 		return json.NewEncoder(out).Encode(report)
+	case "record":
+		if len(args) > 1 && (args[1] == "verify" || args[1] == "recover") {
+			flags := flag.NewFlagSet("record "+args[1], flag.ContinueOnError)
+			flags.SetOutput(io.Discard)
+			sessionID := flags.String("session", "", "recorded session ID")
+			dataRoot := flags.String("data-dir", ".tidelab", "local recording root")
+			if err := flags.Parse(args[2:]); err != nil || flags.NArg() != 0 || *sessionID == "" {
+				return errors.New("usage: tidelab record verify|recover --session ID [--data-dir PATH]")
+			}
+			var manifest recording.Manifest
+			var err error
+			if args[1] == "verify" {
+				manifest, err = recording.Verify(*dataRoot, *sessionID)
+			} else {
+				manifest, err = recording.Recover(*dataRoot, *sessionID, time.Now())
+			}
+			if err != nil {
+				return err
+			}
+			return json.NewEncoder(out).Encode(manifest)
+		}
+		flags := flag.NewFlagSet("record", flag.ContinueOnError)
+		flags.SetOutput(io.Discard)
+		symbol := flags.String("symbol", "", "Kraken spot pair such as BTC/USD")
+		depth := flags.Int("depth", 10, "Kraken L2 depth: 10, 25, 100, 500, or 1000")
+		duration := flags.Duration("duration", 60*time.Second, "capture duration")
+		dataRoot := flags.String("data-dir", ".tidelab", "local recording root")
+		url := flags.String("url", marketservices.DefaultKrakenURL, "public WebSocket URL")
+		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 || *symbol == "" || *duration <= 0 {
+			return errors.New("usage: tidelab record --symbol PAIR [--depth 10|25|100|500|1000] [--duration 60s] [--data-dir PATH] [--url WSS_URL]")
+		}
+		stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		ctx, cancel := context.WithTimeout(stopCtx, *duration)
+		defer cancel()
+		manifest, err := (marketservices.CaptureService{}).Run(ctx, marketservices.CaptureConfig{
+			DataRoot: *dataRoot, URL: *url, Symbol: *symbol, Depth: *depth,
+		})
+		if err != nil {
+			return fmt.Errorf("capture %s (%s): %w", manifest.SessionID, manifest.Status, err)
+		}
+		return json.NewEncoder(out).Encode(manifest)
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}

@@ -4,10 +4,27 @@
   "symbol": "TEST/USD",
   "base_currency": "TEST",
   "quote_currency": "USD",
+  "price_increment": "0.01",
   "quantity_increment": "0.0001",
   "quote_scale": 4,
   "minimum_quantity": "0.0001",
   "minimum_cost": "0.0001",
+  "status": "online",
+  "subscribed_depth": 2,
+  "start_at": "2026-09-30T06:00:00Z",
   "asks": [{"price": "100", "quantity": "1"}, {"price": "101", "quantity": "2"}],
-  "bids": [{"price": "99", "quantity": "1"}, {"price": "98", "quantity": "2"}]
+  "bids": [{"price": "99", "quantity": "1"}, {"price": "98", "quantity": "2"}],
+  "updates": [{
+    "offset_ms": 1000,
+    "changes": [
+      {"side": "ask", "price": "100", "quantity": "0.5"},
+      {"side": "ask", "price": "100", "quantity": "0.8"},
+      {"side": "ask", "price": "101", "quantity": "0"},
+      {"side": "ask", "price": "102", "quantity": "2"},
+      {"side": "ask", "price": "103", "quantity": "9"},
+      {"side": "bid", "price": "99", "quantity": "0"},
+      {"side": "bid", "price": "97", "quantity": "3"},
+      {"side": "bid", "price": "96", "quantity": "4"}
+    ]
+  }]
 }

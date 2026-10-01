@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	marketinfra "github.com/stupidprogrammer4/tidelab/internal/modules/market/infra"
+	marketservices "github.com/stupidprogrammer4/tidelab/internal/modules/market/services"
 	"github.com/stupidprogrammer4/tidelab/internal/modules/system/infra"
 	"github.com/stupidprogrammer4/tidelab/internal/modules/system/routers"
 	"github.com/stupidprogrammer4/tidelab/internal/modules/system/services"
@@ -24,7 +26,7 @@ func main() {
 
 func run(args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("usage: tidelab version | config check [-file PATH] | serve [-config PATH]")
+		return errors.New("usage: tidelab version | config check [-file PATH] | book inspect [-fixture PATH] | serve [-config PATH]")
 	}
 	service := services.InfoService{}
 	switch args[0] {
@@ -65,6 +67,22 @@ func run(args []string, out io.Writer) error {
 		routers.Register(app, service)
 		fmt.Fprintf(out, "TideLab listening on %s\n", config.ListenAddr)
 		return app.Listen(config.ListenAddr)
+	case "book":
+		if len(args) < 2 || args[1] != "inspect" {
+			return errors.New("usage: tidelab book inspect [-fixture PATH]")
+		}
+		flags := flag.NewFlagSet("book inspect", flag.ContinueOnError)
+		flags.SetOutput(io.Discard)
+		path := flags.String("fixture", "testdata/synthetic-market.json", "synthetic book fixture")
+		if err := flags.Parse(args[2:]); err != nil || flags.NArg() != 0 {
+			return errors.New("usage: tidelab book inspect [-fixture PATH]")
+		}
+		inspector := marketservices.InspectOfflineBook{Loader: marketinfra.FileFixtureLoader{}}
+		report, err := inspector.Run(*path)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(out).Encode(report)
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}

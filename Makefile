@@ -12,3 +12,4 @@ vet:
 demo:
 	go run ./cmd/tidelab version
 	go run ./cmd/tidelab config check
+	go run ./cmd/tidelab book inspect

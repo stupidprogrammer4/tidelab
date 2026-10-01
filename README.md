@@ -2,7 +2,7 @@
 
 TideLab is a local-first Go project for reproducible crypto market experiments. Its planned scope is public market-data capture, limited-depth order-book reconstruction, hypothetical spot execution estimates, deterministic replay, and paper execution-plan comparisons. The core is designed to work without an exchange account, API key, or language model. It does not place trades.
 
-This repository currently contains the **M0 bootstrap**, not the market engine. The available commands report the build version, validate local configuration, and run a loopback-only Fiber health endpoint. Market recording, estimation, replay, MCP tools, and the dashboard are planned work and are not available yet.
+This repository currently contains the **M0 bootstrap and M1 offline book**. The available commands report the build version, validate local configuration, inspect a synthetic order-book sequence, and run a loopback-only Fiber health endpoint. Execution estimates, market recording, replay, MCP tools, and the dashboard are planned work and are not available yet.
 
 ## Requirements
 
@@ -14,6 +14,7 @@ This repository currently contains the **M0 bootstrap**, not the market engine. 
 ```sh
 go run ./cmd/tidelab version
 go run ./cmd/tidelab config check
+go run ./cmd/tidelab book inspect
 go run ./cmd/tidelab serve
 ```
 
@@ -30,6 +31,8 @@ Configuration is optional. Pass a JSON file with `-file` to `config check` or wi
 
 Unknown fields, malformed JSON, files larger than 64 KiB, and non-loopback listen addresses are rejected. The data directory is reserved for future recordings; the bootstrap does not write market data.
 
+`book inspect` reads `testdata/synthetic-market.json` from the repository root. Use `-fixture PATH` to inspect another file with the same schema. It applies a snapshot and ordered updates, then prints exact decimal strings, observed depth, data-quality state, and a deterministic SHA-256 book digest. This fixture is synthetic; its output explicitly reports `feed_live: false` and `checksum_valid: false`. It does not estimate trades.
+
 ## Architecture
 
 Features live under `internal/modules/<module>/`. Each module has these boundaries:
@@ -42,7 +45,7 @@ Features live under `internal/modules/<module>/`. Each module has these boundari
 | `routers` | Fiber HTTP routes that call services |
 | `tools` | MCP tools that call the same services |
 
-The initial `system` module demonstrates these boundaries. Its `tools` directory is reserved until MCP support is implemented. Entrypoint wiring lives in `cmd/tidelab`; synthetic fixture metadata is in `testdata/`. Domain logic must stay independent of Fiber, MCP, and vendor SDKs. Financial values will use exact arithmetic and decimal strings at external boundaries.
+The `system` and `market` modules follow these boundaries. Their unused router/tool directories are reserved for later HTTP and MCP surfaces. Entrypoint wiring lives in `cmd/tidelab`; synthetic fixture data is in `testdata/`. A small shared `internal/value` package provides immutable exact rational values for future financial modules. Domain logic stays independent of Fiber, MCP, and vendor SDKs; financial values use decimal strings at external boundaries.
 
 ## Development
 
@@ -56,8 +59,8 @@ The local, ignored `docs/` directory holds the detailed product blueprint, proje
 
 ## Roadmap
 
-1. Exact decimal values and a validated offline order book.
-2. Hypothetical execution estimates with explicit fees and observed-depth limits.
+1. Exact decimal values and a validated offline order book — implemented.
+2. Hypothetical execution estimates with explicit fees and observed-depth limits — next.
 3. Public Kraken feed capture and durable recordings.
 4. Deterministic replay, paper balances, and execution-plan comparison.
 5. Shared CLI, Fiber HTTP API, MCP tools, and a local dashboard.

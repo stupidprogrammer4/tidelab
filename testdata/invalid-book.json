@@ -1,0 +1,21 @@
+{
+  "kind": "synthetic_fixture_metadata",
+  "provenance": "TideLab synthetic invalidation fixture; not exchange data",
+  "symbol": "TEST/USD",
+  "base_currency": "TEST",
+  "quote_currency": "USD",
+  "price_increment": "0.01",
+  "quantity_increment": "0.0001",
+  "quote_scale": 4,
+  "minimum_quantity": "0.0001",
+  "minimum_cost": "0.0001",
+  "status": "online",
+  "subscribed_depth": 2,
+  "start_at": "2026-09-30T06:00:00Z",
+  "asks": [{"price": "100", "quantity": "1"}],
+  "bids": [{"price": "99", "quantity": "1"}],
+  "updates": [{
+    "offset_ms": 1000,
+    "changes": [{"side": "ask", "price": "98", "quantity": "1"}]
+  }]
+}
